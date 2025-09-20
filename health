@@ -1,0 +1,23 @@
+const express = require("express");
+const cors = require("cors");
+
+const app = express();
+const PORT = 4000;
+
+app.use(cors());
+app.use(express.json());
+
+// ROOT – rýchly test
+app.get("/", (_req, res) => {
+  res.send("Ahoj z backendu! 🎉");
+});
+
+// HEALTH – toto testujeme v prehliadači
+app.get("/health", (_req, res) => {
+  res.json({ ok: true, service: "backend", version: "0.1.0" });
+});
+
+app.listen(PORT, () => {
+  console.log(`Backend PID ${process.pid}`);
+  console.log(`Server beží na http://localhost:${PORT}`);
+});
