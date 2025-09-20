@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Reservation System – Villa Lucia</title>
+    <style>
+      :root{--muted:#f3f4f6;--border:#e5e7eb;}
+      body { font-family: Arial, sans-serif; margin: 2rem; }
+      header { display:flex; justify-content:space-between; align-items:center; }
+      h1 { margin-bottom: .25rem }
+      small { color:#555 }
+      form { margin: 1.25rem 0 2rem }
+      input, select, button { padding: .5rem; margin: .25rem 0; }
+      button { cursor:pointer }
+      .reservation { border:1px solid var(--border); border-radius:8px; padding:.5rem; margin:.35rem 0; background:#fff }
+      .grid { display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; }
+      .cal { border:1px solid var(--border); border-radius:10px; padding:12px; background:#fff; max-width: 480px }
+      .cal-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px }
+      .dow { text-align:center; font-weight:600; color:#555; background:var(--muted); padding:6px; border-radius:6px }
+      .day { text-align:center; padding:10px 0; border:1px solid var(--border); border-radius:6px; user-select:none; background:#fff }
+      .day.muted { color:#aaa; background:#fafafa }
+      .day.booked { background:#fee2e2; border-color:#fecaca; color:#991b1b }
+      .day.free { background:#ecfdf5; border-color:#bbf7d0; color:#065f46; cursor:pointer }
+      .legend { display:flex; gap:12px; margin-top:8px; font-size:.9rem }
+      .chip { display:inline-block; padding:3px 8px; border:1px solid var(--border); border-radius:999px }
+      .chip.book { background:#fee2e2; border-color:#fecaca }
+      .chip.free { background:#ecfdf5; border-color:#bbf7d0 }
+      .row { display:flex; gap:2rem; flex-wrap:wrap }
+      .card { border:1px solid var(--border); border-radius:12px; padding:12px; background:#fff }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1 id="title">Reservation System – Villa Lucia</h1>
+        <small id="subtitle">Demo: HTML+JS connected to your API</small>
+      </div>
+      <div>
+        <label for="langSelect">🌐</label>
+        <select id="langSelect">
+          <option value="en">EN</option>
+          <option value="sk">SK</option>
+        </select>
+      </div>
+    </header>
+
+    <div class="row">
+      <div class="card" style="flex:1 1 360px">
+        <h2 id="createTitle">Create Reservation</h2>
+        <form id="reservationForm">
+          <label id="roomLabel">Room:
+            <select id="roomId"></select>
+          </label><br/>
+          <label id="checkInLabel">Check-in: <input type="date" id="checkIn" required></label><br/>
+          <label id="checkOutLabel">Check-out: <input type="date" id="checkOut" required></label><br/>
+          <label id="guestNameLabel">Guest Name: <input type="text" id="guestName" required></label><br/>
+          <label id="emailLabel">Email: <input type="email" id="email" required></label><br/>
+          <button type="submit" id="bookBtn">Book</button>
+        </form>
+
+        <h3 id="existingTitle">Existing Reservations</h3>
+        <div id="reservations"></div>
+      </div>
+
+      <div class="card" style="flex:1 1 480px">
+        <h2 id="availabilityTitle">Availability (Calendar)</h2>
+        <div class="cal">
+          <div class="cal-head">
+            <button id="prevMonth" title="Previous">◀</button>
+            <h3 id="calTitle">Month Year</h3>
+            <button id="nextMonth" title="Next">▶</button>
+          </div>
+          <div class="grid" id="dow"></div>
+          <div class="grid" id="calendar"></div>
+          <div class="legend">
+            <span class="chip book" id="legendReserved">Reserved</span>
+            <span class="chip free" id="legendFree">Free</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API = location.origin + "/public";
+
+      // === translations ===
+      const translations = {
+        en: {
+          title: "Reservation System – Villa Lucia",
+          subtitle: "Demo: HTML+JS connected to your API",
+          create: "Create Reservation",
+          room: "Room",
+          checkIn: "Check-in",
+          checkOut: "Check-out",
+          guestName: "Guest Name",
+          email: "Email",
+          book: "Book",
+          existing: "Existing Reservations",
+          availability: "Availability (Calendar)",
+          reserved: "Reserved",
+          free: "Free",
+          alertSuccess: "Reservation created 👍",
+          alertError: "Error: ",
+          dow: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+          monthNames: ["January","February","March","April","May","June","July","August","September","October","November","December"]
+        },
+        sk: {
+          title: "Rezervačný systém – Villa Lucia",
+          subtitle: "Demo: HTML+JS napojené na tvoje API",
+          create: "Vytvoriť rezerváciu",
+          room: "Izba",
+          checkIn: "Check-in",
+          checkOut: "Check-out",
+          guestName: "Meno hosťa",
+          email: "Email",
+          book: "Rezervovať",
+          existing: "Existujúce rezervácie",
+          availability: "Dostupnosť (Kalendár)",
+          reserved: "Obsadené",
+          free: "Voľné",
+          alertSuccess: "Rezervácia vytvorená 👍",
+          alertError: "Chyba: ",
+          dow: ["Po","Ut","St","Št","Pi","So","Ne"],
+          monthNames: ["január","február","marec","apríl","máj","jún","júl","august","september","október","november","december"]
+        }
+      };
+
+      let lang = "en";
+
+      function applyTranslations(){
+        const t = translations[lang];
+        document.getElementById("title").textContent = t.title;
+        document.getElementById("subtitle").textContent = t.subtitle;
+        document.getElementById("createTitle").textContent = t.create;
+        document.getElementById("roomLabel").childNodes[0].textContent = t.room + ": ";
+        document.getElementById("checkInLabel").childNodes[0].textContent = t.checkIn + ": ";
+        document.getElementById("checkOutLabel").childNodes[0].textContent = t.checkOut + ": ";
+        document.getElementById("guestNameLabel").childNodes[0].textContent = t.guestName + ": ";
+        document.getElementById("emailLabel").childNodes[0].textContent = t.email + ": ";
+        document.getElementById("bookBtn").textContent = t.book;
+        document.getElementById("existingTitle").textContent = t.existing;
+        document.getElementById("availabilityTitle").textContent = t.availability;
+        document.getElementById("legendReserved").textContent = t.reserved;
+        document.getElementById("legendFree").textContent = t.free;
+
+        // update days of week header
+        const dow = document.getElementById("dow");
+        dow.innerHTML = "";
+        t.dow.forEach(d=>{
+          const div = document.createElement("div");
+          div.className="dow";
+          div.textContent = d;
+          dow.appendChild(div);
+        });
+        renderCalendar(); // refresh calendar with month names
+      }
+
+      // ============ pôvodný JS (availability, reservations, calendar) ============
+      function toYmd(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,"0"); const day=String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${day}` }
+      function monthRange(year, month){ const first=new Date(year,month,1); const last=new Date(year,month+1,0); return {first,last}; }
+      function weekDaySk(d){ const w=d.getDay(); return w===0?7:w; }
+
+      const selRoom=document.getElementById("roomId");
+      const resWrap=document.getElementById("reservations");
+      const form=document.getElementById("reservationForm");
+      const calTitle=document.getElementById("calTitle");
+      const calGrid=document.getElementById("calendar");
+      const prevBtn=document.getElementById("prevMonth");
+      const nextBtn=document.getElementById("nextMonth");
+
+      let state={ rooms:[], month:(new Date()).getMonth(), year:(new Date()).getFullYear(), bookedSet:new Set() };
+
+      async function loadRooms(){ const r=await fetch(`${API}/rooms`); const d=await r.json(); state.rooms=d.rooms||[]; selRoom.innerHTML=""; state.rooms.forEach(rm=>{const opt=document.createElement("option"); opt.value=rm.id; opt.textContent=`${rm.name} – ${rm.capacity} persons – ${rm.pricePerNight}€/night`; selRoom.appendChild(opt);}); }
+      async function loadReservations(){ const r=await fetch(`${API}/reservations`); const d=await r.json(); resWrap.innerHTML=""; (d.reservations||[]).forEach(rm=>{const div=document.createElement("div"); div.className="reservation"; div.textContent=`${rm.guestName} (${rm.email}) – room ${rm.roomId}, ${rm.checkIn} → ${rm.checkOut}`; resWrap.appendChild(div);}); }
+      async function loadAvailability(){ const roomId=Number(selRoom.value); const {first,last}=monthRange(state.year,state.month); const from=toYmd(first); const to=toYmd(last); const url=`${API}/availability/${roomId}?from=${from}&to=${to}`; const r=await fetch(url); const d=await r.json(); state.bookedSet=new Set(d.bookedDates||[]); renderCalendar(); }
+
+      function renderCalendar(){
+        const t=translations[lang];
+        calTitle.textContent=`${t.monthNames[state.month]} ${state.year}`;
+        calGrid.innerHTML="";
+        const {first,last}=monthRange(state.year,state.month);
+        const blanks=(weekDaySk(first)-1+7)%7;
+        for(let i=0;i<blanks;i++){const div=document.createElement("div");div.className="day muted";calGrid.appendChild(div);}
+        for(let day=1;day<=last.getDate();day++){const date=new Date(state.year,state.month,day);const ymd=toYmd(date);const div=document.createElement("div");const booked=state.bookedSet.has(ymd);div.className="day "+(booked?"booked":"free");div.textContent=String(day);div.addEventListener("click",()=>{if(!booked){document.getElementById("checkIn").value=ymd;const next=new Date(date);next.setDate(next.getDate()+1);document.getElementById("checkOut").value=toYmd(next);}});calGrid.appendChild(div);}
+      }
+
+      prevBtn.addEventListener("click",async()=>{if(state.month===0){state.month=11;state.year-=1;}else{state.month-=1;}await loadAvailability();});
+      nextBtn.addEventListener("click",async()=>{if(state.month===11){state.month=0;state.year+=1;}else{state.month+=1;}await loadAvailability();});
+      selRoom.addEventListener("change",loadAvailability);
+
+      form.addEventListener("submit",async e=>{
+        e.preventDefault();
+        const payload={roomId:Number(selRoom.value),checkIn:document.getElementById("checkIn").value,checkOut:document.getElementById("checkOut").value,guestName:document.getElementById("guestName").value,email:document.getElementById("email").value};
+        const r=await fetch(`${API}/reservations`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+        const d=await r.json(); 
+        if(r.status===201){ alert(translations[lang].alertSuccess); await loadReservations(); await loadAvailability();}
+        else{ alert(translations[lang].alertError+(d.error||r.status)); }
+      });
+
+      document.getElementById("langSelect").addEventListener("change", e=>{
+        lang = e.target.value;
+        applyTranslations();
+      });
+
+      (async function init(){ await loadRooms(); await loadReservations(); await loadAvailability(); applyTranslations(); })();
+    </script>
+  </body>
+</html>
