@@ -3,17 +3,20 @@ const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 const { v4: uuidv4 } = require('uuid');
-const ical = require('node-ical'); // NOVÉ: Spracovanie kalendára
-const axios = require('axios');    // NOVÉ: Sťahovanie dát
+const ical = require('node-ical');
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 const ADMIN_KEY = "lucia123"; 
 
-// SEM VLOŽÍŠ SVOJ AIRBNB LINK (Export Calendar -> iCal link)
-const AIRBNB_ICAL_URL = "https://sk.airbnb.com/calendar/ical/1252224630542609904.ics?t=62f0dee1a462427d966afb29d18dc2c4";
-"https://ical.booking.com/v1/export?t=34e8749b-1bb2-4b99-8668-8e21cf7c2fb3", // Booking.com
-  "https://www.hauzi.sk/ics/V7oDwxnDFaVD5R7aU/fW7c2DwyDvsxTvzOV"    // Hauzi.sk
+// 1. OPRAVENÝ ZOZNAM LINKOV (Všetky spolu v jednom poli)
+const ICAL_URLS = [
+  "https://sk.airbnb.com/calendar/ical/1252224630542609904.ics?t=62f0dee1a462427d966afb29d18dc2c4",
+  "https://ical.booking.com/v1/export?t=34e8749b-1bb2-4b99-8668-8e21cf7c2fb3",
+  "https://www.hauzi.sk/ics/V7oDwxnDFaVD5R7aU/fW7c2DwyDvsxTvzOV"
+];
+
 app.use(cors());
 app.use(express.json());
 
@@ -30,11 +33,8 @@ function daysBetween(from, to) {
   const out = [];
   let d = new Date(from);
   let end = new Date(to);
-  
-  // Vynulujeme čas, aby sme pracovali len s dňami (veľmi dôležité pre Airbnb!)
   d.setHours(0, 0, 0, 0);
   end.setHours(0, 0, 0, 0);
-
   while (d < end) {
     out.push(d.toISOString().split('T')[0]);
     d.setUTCDate(d.getUTCDate() + 1);
@@ -42,46 +42,33 @@ function daysBetween(from, to) {
   return out;
 }
 
-// NOVÉ: Funkcia na sťahovanie dát z Airbnb
-// index.js (Backend)
-
+// 2. FUNKCIA NA SYNCHRONIZÁCIU VŠETKÝCH KALENDÁROV
 async function getExternalDates() {
   const allBlocked = [];
-
   for (const url of ICAL_URLS) {
-    if (!url || url.includes("TVOJ_")) continue; // Preskočíme prázdne linky
-
     try {
-      console.log(`Lucy is fetching: ${url.substring(0, 30)}...`);
+      console.log(`Lucy is fetching: ${url.substring(0, 40)}...`);
       const response = await axios.get(url);
       const data = ical.sync.parseICS(response.data);
-
       for (let k in data) {
         const event = data[k];
         if (event.type === 'VEVENT') {
-          // Spracujeme dni medzi príchodom a odchodom
           allBlocked.push(...daysBetween(event.start, event.end));
         }
       }
     } catch (error) {
-      console.error(`Sync error for ${url.substring(0, 20)}:`, error.message);
+      console.error(`Sync error for link:`, error.message);
     }
   }
-
   return allBlocked;
 }
-}
 
-// GET: Spojíme manuálne rezervácie + Airbnb
+// 3. CESTA PRE VEREJNÝ KALENDÁR
 app.get("/public/reservations", async (req, res) => {
   const manualRes = loadRes();
   const manualDates = manualRes.flatMap(r => daysBetween(r.checkIn, r.checkOut));
-  
-  // Stiahneme aktuálne dáta z Airbnb
-  const airbnbDates = await getAirbnbDates();
-  
-  // Spojíme ich a odstránime duplicity
-  const allBooked = [...new Set([...manualDates, ...airbnbDates])];
+  const externalDates = await getExternalDates();
+  const allBooked = [...new Set([...manualDates, ...externalDates])];
   
   res.json({ 
     reservations: manualRes, 
@@ -89,7 +76,7 @@ app.get("/public/reservations", async (req, res) => {
   });
 });
 
-// Ostatné cesty zostávajú rovnaké (POST, DELETE)
+// 4. PRIDANIE REZERVÁCIE (ADMIN)
 app.post("/public/reservations", (req, res) => {
   const { checkIn, checkOut, guestName, email, auth } = req.body;
   if (auth !== ADMIN_KEY) return res.status(401).json({ error: "Unauthorized" });
@@ -101,8 +88,9 @@ app.post("/public/reservations", (req, res) => {
   res.status(201).json(newRes);
 });
 
+// 5. MAZANIE REZERVÁCIE (ADMIN)
 app.delete("/public/reservations/:id", (req, res) => {
-  const { auth } = req.body;
+  const { auth } = req.body; // Heslo posielame v tele požiadavky
   if (auth !== ADMIN_KEY) return res.status(401).json({ error: "Unauthorized" });
 
   let reservations = loadRes();
@@ -112,8 +100,3 @@ app.delete("/public/reservations/:id", (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`Villa Lucia Engine Syncing on ${PORT}`));
-
-
-
-
-
