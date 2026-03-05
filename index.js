@@ -1,4 +1,3 @@
-// index.js (Úprava pre celú Villu)
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
@@ -7,18 +6,19 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
+app.use(cors()); // Povolí prepojenie s tvojím webom
 app.use(express.json());
 
 const DATA_DIR = path.join(__dirname, "data");
 const RES_FILE = path.join(DATA_DIR, "reservations.json");
+
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(RES_FILE)) fs.writeFileSync(RES_FILE, "[]", "utf8");
 
 function loadReservations() { return JSON.parse(fs.readFileSync(RES_FILE, "utf8")); }
 function saveReservations(arr) { fs.writeFileSync(RES_FILE, JSON.stringify(arr, null, 2), "utf8"); }
 
-// TVOJA PÔVODNÁ FUNKCIA - toto je ten "PRO" prístup
+// TVOJA LOGIKA ROZBITIA NA DNI
 function daysBetween(from, to) {
   const out = [];
   const d1 = new Date(from + "T00:00:00Z");
@@ -29,9 +29,9 @@ function daysBetween(from, to) {
   return out;
 }
 
+// GET - VRÁTI DÁTA PRE WEB
 app.get("/public/reservations", (req, res) => {
   const reservations = loadReservations();
-  // Vrátime aj rozbalené dni pre kalendár, aj surové dáta pre zoznam
   const allBookedDates = reservations.flatMap(r => daysBetween(r.checkIn, r.checkOut));
   res.json({ 
     reservations, 
@@ -39,14 +39,13 @@ app.get("/public/reservations", (req, res) => {
   });
 });
 
+// POST - PRIDÁ REZERVÁCIU CEZ TVOJ ADMIN FORMULÁR
 app.post("/public/reservations", (req, res) => {
   const { checkIn, checkOut, guestName, email } = req.body;
-  
   if (!checkIn || !checkOut || !guestName) return res.status(400).json({ error: "Missing fields" });
 
   const reservations = loadReservations();
   const overlap = reservations.find(r => !(r.checkOut <= checkIn || r.checkIn >= checkOut));
-  
   if (overlap) return res.status(409).json({ error: "Termín je obsadený." });
 
   const newRes = {
