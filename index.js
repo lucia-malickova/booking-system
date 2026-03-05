@@ -1,33 +1,63 @@
-// Uprav tento endpoint v index.js:
-app.post("/public/reservations", (req, res) => {
-  const { checkIn, checkOut, guestName, email } = req.body || {};
-  
-  // roomId už nekontrolujeme, automaticky priradíme 1 (celá Villa)
-  if (!checkIn || !checkOut || !guestName || !email) {
-    return res.status(400).json({ error: "Missing required fields." });
+// index.js (Úprava pre celú Villu)
+const express = require("express");
+const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
+
+const app = express();
+const PORT = process.env.PORT || 4000;
+
+app.use(cors());
+app.use(express.json());
+
+const DATA_DIR = path.join(__dirname, "data");
+const RES_FILE = path.join(DATA_DIR, "reservations.json");
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!fs.existsSync(RES_FILE)) fs.writeFileSync(RES_FILE, "[]", "utf8");
+
+function loadReservations() { return JSON.parse(fs.readFileSync(RES_FILE, "utf8")); }
+function saveReservations(arr) { fs.writeFileSync(RES_FILE, JSON.stringify(arr, null, 2), "utf8"); }
+
+// TVOJA PÔVODNÁ FUNKCIA - toto je ten "PRO" prístup
+function daysBetween(from, to) {
+  const out = [];
+  const d1 = new Date(from + "T00:00:00Z");
+  const d2 = new Date(to + "T00:00:00Z");
+  for (let d = new Date(d1); d < d2; d.setUTCDate(d.getUTCDate() + 1)) {
+    out.push(d.toISOString().split('T')[0]);
   }
+  return out;
+}
+
+app.get("/public/reservations", (req, res) => {
+  const reservations = loadReservations();
+  // Vrátime aj rozbalené dni pre kalendár, aj surové dáta pre zoznam
+  const allBookedDates = reservations.flatMap(r => daysBetween(r.checkIn, r.checkOut));
+  res.json({ 
+    reservations, 
+    bookedDates: [...new Set(allBookedDates)].sort() 
+  });
+});
+
+app.post("/public/reservations", (req, res) => {
+  const { checkIn, checkOut, guestName, email } = req.body;
+  
+  if (!checkIn || !checkOut || !guestName) return res.status(400).json({ error: "Missing fields" });
 
   const reservations = loadReservations();
-
-  // Kontrola kolízie pre celý objekt
-  const overlap = reservations.find(
-    (r) => !(r.checkOut <= checkIn || r.checkIn >= checkOut)
-  );
+  const overlap = reservations.find(r => !(r.checkOut <= checkIn || r.checkIn >= checkOut));
   
   if (overlap) return res.status(409).json({ error: "Termín je obsadený." });
 
-  const reservation = {
+  const newRes = {
     id: Math.random().toString(36).slice(2),
-    roomId: 1, // Vždy celá Villa
-    checkIn,
-    checkOut,
-    guestName,
-    email,
-    status: "PENDING",
-    createdAt: new Date().toISOString(),
+    checkIn, checkOut, guestName, email,
+    createdAt: new Date().toISOString()
   };
 
-  reservations.push(reservation);
+  reservations.push(newRes);
   saveReservations(reservations);
-  return res.status(201).json({ reservation, total: reservations.length });
+  res.status(201).json(newRes);
 });
+
+app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
