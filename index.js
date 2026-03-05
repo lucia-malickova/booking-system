@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 4000;
 const ADMIN_KEY = "lucia123"; 
 
 // SEM VLOŽÍŠ SVOJ AIRBNB LINK (Export Calendar -> iCal link)
-const AIRBNB_ICAL_URL = https://sk.airbnb.com/calendar/ical/1252224630542609904.ics?t=62f0dee1a462427d966afb29d18dc2c4;
+const AIRBNB_ICAL_URL = "https://sk.airbnb.com/calendar/ical/1252224630542609904.ics?t=62f0dee1a462427d966afb29d18dc2c4";
 
 app.use(cors());
 app.use(express.json());
@@ -98,3 +98,4 @@ app.delete("/public/reservations/:id", (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`Villa Lucia Engine Syncing on ${PORT}`));
+
