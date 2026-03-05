@@ -37,20 +37,33 @@ function daysBetween(from, to) {
 }
 
 // NOVÉ: Funkcia na sťahovanie dát z Airbnb
+// index.js (Backend)
+
 async function getAirbnbDates() {
-  if (!AIRBNB_ICAL_URL || AIRBNB_ICAL_URL === "TVOJ_AIRBNB_ICAL_LINK_TU") return [];
+  if (!AIRBNB_ICAL_URL || AIRBNB_ICAL_URL.includes("TVOJ_AIRBNB_ICAL_LINK_TU")) {
+    console.log("Lucy says: Airbnb link is missing or default.");
+    return [];
+  }
   
   try {
     const response = await axios.get(AIRBNB_ICAL_URL);
-    const data = ical.parseICS(response.data);
+    // ical.sync.parseICS je spoľahlivejší pre synchrónne dáta z axiosu
+    const data = ical.sync.parseICS(response.data);
     const blocked = [];
 
     for (let k in data) {
       const event = data[k];
       if (event.type === 'VEVENT') {
-        blocked.push(...daysBetween(event.start, event.end));
+        const start = new Date(event.start);
+        const end = new Date(event.end);
+        
+        // Použijeme tvoju funkciu daysBetween, ale uistíme sa, že posielame čisté Date objekty
+        const dates = daysBetween(start, end);
+        blocked.push(...dates);
       }
     }
+    
+    console.log(`Lucy found ${blocked.length} blocked nights on Airbnb.`);
     return blocked;
   } catch (error) {
     console.error("Airbnb Sync Error:", error.message);
@@ -98,4 +111,5 @@ app.delete("/public/reservations/:id", (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`Villa Lucia Engine Syncing on ${PORT}`));
+
 
