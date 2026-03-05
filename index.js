@@ -12,7 +12,8 @@ const ADMIN_KEY = "lucia123";
 
 // SEM VLOŽÍŠ SVOJ AIRBNB LINK (Export Calendar -> iCal link)
 const AIRBNB_ICAL_URL = "https://sk.airbnb.com/calendar/ical/1252224630542609904.ics?t=62f0dee1a462427d966afb29d18dc2c4";
-
+"https://ical.booking.com/v1/export?t=34e8749b-1bb2-4b99-8668-8e21cf7c2fb3", // Booking.com
+  "https://www.hauzi.sk/ics/V7oDwxnDFaVD5R7aU/fW7c2DwyDvsxTvzOV"    // Hauzi.sk
 app.use(cors());
 app.use(express.json());
 
@@ -116,6 +117,7 @@ app.delete("/public/reservations/:id", (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`Villa Lucia Engine Syncing on ${PORT}`));
+
 
 
 
