@@ -29,9 +29,14 @@ function daysBetween(from, to) {
   const out = [];
   let d = new Date(from);
   let end = new Date(to);
+  
+  // Vynulujeme čas, aby sme pracovali len s dňami (veľmi dôležité pre Airbnb!)
+  d.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
   while (d < end) {
     out.push(d.toISOString().split('T')[0]);
-    d.setDate(d.getDate() + 1);
+    d.setUTCDate(d.getUTCDate() + 1);
   }
   return out;
 }
@@ -111,5 +116,6 @@ app.delete("/public/reservations/:id", (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`Villa Lucia Engine Syncing on ${PORT}`));
+
 
 
