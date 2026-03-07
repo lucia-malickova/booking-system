@@ -1,60 +1,28 @@
-# Booking System
+# ⚙️ Booking Engine (API)
 
-This is a demo reservation system project built in **Node.js (Express)** with support for **JSON storage** and a future plan to integrate **PostgreSQL**.
+This repository contains the **Node.js (Express) backend** powering the reservation logic for **Villa Lucia** — a luxury forest sanctuary in Banská Štiavnica (UNESCO Heritage). 
 
-## Features
-- Backend API with `GET` and `POST` endpoints for reservations
-- In-memory and JSON file storage
-- Ready for SQL / PostgreSQL integration
-- Simple logging of requests
-- REST API tested with Thunder Client / Postman
+It acts as a lightweight, high-performance API that synchronizes guest availability between the Villa's neural companion (Lucy) and the frontend interface.
 
-## Installation
-1. Clone this repository:
+## 🚀 Core Functionalities
+* **RESTful API Architecture:** Clean GET/POST endpoints for seamless calendar integration.
+* **Hybrid Data Storage:** Currently utilizing JSON file persistence, architected for future PostgreSQL migration.
+* **CORS Optimized:** Securely serves the Villa Lucia frontend hosted on Vercel.
+* **Automated Health Monitoring:** Built-in vitality checks for 24/7 reliability.
+
+## 🛠️ Technical Stack
+* **Runtime:** Node.js
+* **Framework:** Express.js
+* **Deployment:** Render (Live Production)
+* **Testing:** Postman / Thunder Client Verified
+
+## 📍 API Endpoints
+* `GET /public/reservations` — Retrieve live availability dates.
+* `POST /public/reservations` — Securely submit new booking inquiries.
+* `GET /health` — System status and vitality check.
+
+## 🔧 Installation & Local Setup
+1. **Clone the repository:**
    ```bash
-   git clone https://github.com/<your-username>/booking-system.git
-  
-Install dependencies:
-
-bash
-Kopírovať kód
-npm install
-Start the server:
-
-bash
-Kopírovať kód
-node index.js
-API will be available at http://localhost:4000
-
-Example Requests
-Health check
-
-http
-Kopírovať kód
-GET /health
-Get reservations
-
-http
-Kopírovať kód
-GET /public/reservations
-Create a reservation
-
-http
-Kopírovať kód
-POST /public/reservations
-Content-Type: application/json
-{
-  "name": "John Doe",
-  "room": "101",
-  "date": "2025-09-20"
-}
-Future Plans
-Frontend calendar UI
-
-PostgreSQL database support
-
-Dockerized deployment
-
-Multi-language support (Slovak/English)
-
-💡 This project is also used as a portfolio example to demonstrate backend architecture, API design, database integration, and test management skills.
+   git clone [https://github.com/lucia-malickova/booking-system.git](https://github.com/lucia-malickova/booking-system.git)
+   
